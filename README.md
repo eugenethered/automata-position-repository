@@ -1,2 +1,4 @@
-# automata-position-repository
-Automata Position Repository
+# Automata Position Repository
+
+## Packaging
+`python3 -m build`
