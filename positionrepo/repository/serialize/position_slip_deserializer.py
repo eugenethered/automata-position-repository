@@ -1,7 +1,6 @@
 from core.number.BigFloat import BigFloat
+from core.position.PositionSlip import PositionSlip, Status
 from utility.json_utility import as_data
-
-from positionrepo.PositionSlip import PositionSlip, Status
 
 
 def deserialize(position_slip) -> PositionSlip:

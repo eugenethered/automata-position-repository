@@ -1,4 +1,4 @@
-from positionrepo.PositionSlip import PositionSlip
+from core.position.PositionSlip import PositionSlip
 
 
 def serialize(position_slip: PositionSlip) -> dict:

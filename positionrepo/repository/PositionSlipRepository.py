@@ -1,7 +1,7 @@
 from cache.holder.RedisCacheHolder import RedisCacheHolder
 from core.options.exception.MissingOptionError import MissingOptionError
+from core.position.PositionSlip import PositionSlip
 
-from positionrepo.PositionSlip import PositionSlip
 from positionrepo.repository.serialize.position_slip_deserializer import deserialize
 from positionrepo.repository.serialize.position_slip_serializer import serialize
 

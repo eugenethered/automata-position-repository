@@ -1,4 +1,4 @@
-from positionrepo.Position import Position
+from core.position.Position import Position
 
 
 def serialize(position: Position) -> dict:
