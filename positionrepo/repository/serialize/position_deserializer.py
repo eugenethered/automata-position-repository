@@ -1,6 +1,6 @@
 from core.number.BigFloat import BigFloat
 from core.position.Position import Position
-from utility.json_utility import as_data
+from coreutility.collection.dictionary_utility import as_data
 
 
 def deserialize(position) -> Position:
