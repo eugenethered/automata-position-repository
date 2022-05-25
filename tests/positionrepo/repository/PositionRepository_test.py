@@ -57,6 +57,10 @@ class PositionRepositoryTestCase(unittest.TestCase):
         historic_positions = self.repository.retrieve_historic_positions()
         self.assertTrue(len(historic_positions) == 2)
 
+    def test_should_not_receive_a_position_when_there_is_non_present(self):
+        position = self.repository.retrieve()
+        self.assertIsNone(position)
+
 
 if __name__ == '__main__':
     unittest.main()
