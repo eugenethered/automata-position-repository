@@ -1,6 +1,8 @@
+import logging
 import unittest
 
 from cache.holder.RedisCacheHolder import RedisCacheHolder
+from cache.provider.RedisCacheProviderWithHash import RedisCacheProviderWithHash
 from core.number.BigFloat import BigFloat
 from core.position.PositionSlip import PositionSlip, Status
 
@@ -10,6 +12,9 @@ from positionrepo.repository.PositionSlipRepository import PositionSlipRepositor
 class PositionSlipRepositoryTestCase(unittest.TestCase):
 
     def setUp(self) -> None:
+        logging.basicConfig(level=logging.INFO)
+        logging.getLogger('ExchangeTransformRepository').setLevel(logging.DEBUG)
+
         options = {
             'REDIS_SERVER_ADDRESS': '192.168.1.90',
             'REDIS_SERVER_PORT': 6379,

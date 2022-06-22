@@ -1,4 +1,7 @@
+import logging
+
 from cache.holder.RedisCacheHolder import RedisCacheHolder
+from cache.provider.RedisCacheProviderWithHash import RedisCacheProviderWithHash
 from core.options.exception.MissingOptionError import MissingOptionError
 from core.position.Position import Position
 from coreutility.string.string_utility import is_empty
@@ -13,9 +16,10 @@ POSITION_HISTORY_LIMIT = 'POSITION_HISTORY_LIMIT'
 class PositionRepository:
 
     def __init__(self, options):
+        self.log = logging.getLogger('PositionRepository')
         self.options = options
         self.__check_options()
-        self.cache = RedisCacheHolder()
+        self.cache = RedisCacheHolder(held_type=RedisCacheProviderWithHash)
 
     def __check_options(self):
         if self.options is None:
@@ -23,45 +27,42 @@ class PositionRepository:
         if POSITION_KEY not in self.options:
             raise MissingOptionError(f'missing option please provide option {POSITION_KEY}')
 
-    def __build_position_key(self):
+    def store_key(self):
         return self.options[POSITION_KEY]
 
-    def __build_historic_positions_key(self):
-        position_key = self.__build_position_key()
-        return f'{position_key}:history'
+    def store_history_key(self):
+        position_key = self.store_key()
+        return f'{position_key}:mv:history'
+
+    @staticmethod
+    def historic_value_key(position):
+        return f'{position["instant"]}'
 
     def store(self, position: Position):
-        position_key = self.__build_position_key()
         position_serialized = serialize(position)
-        self.cache.store(position_key, position_serialized)
+        self.cache.store(self.store_key(), position_serialized)
         self.store_historical_position(position)
 
     def retrieve(self) -> Position:
-        position_key = self.__build_position_key()
-        raw_position = self.cache.fetch(position_key, as_type=dict)
+        raw_position = self.cache.fetch(self.store_key(), as_type=dict)
         return deserialize(raw_position)
 
     def store_historical_position(self, position: Position):
         if is_empty(position.exchanged_from) is False:
-            historical_positions = self.retrieve_historic_positions()
-            if self.__is_already_history(position, historical_positions) is False:
-                historical_positions.append(position)
-                self.__store_historical_positions_with_limit(historical_positions)
-
-    @staticmethod
-    def __is_already_history(position, historical_positions):
-        matching_positions = list([hp for hp in historical_positions if hp == position])
-        return len(matching_positions) > 0
-
-    def __store_historical_positions_with_limit(self, historical_positions):
-        entities_to_store = list([serialize(p) for p in historical_positions])
-        if POSITION_HISTORY_LIMIT in self.options:
-            if len(entities_to_store) > int(self.options[POSITION_HISTORY_LIMIT]):
-                entities_to_store = entities_to_store[1:]
-        key = self.__build_historic_positions_key()
-        self.cache.store(key, entities_to_store)
+            serialized_entity = serialize(position)
+            self.log.debug(f'storing position into history:{serialized_entity} in store[{self.store_history_key()}] for key:{self.historic_value_key(serialized_entity)}')
+            self.cache.values_set_value(self.store_history_key(), self.historic_value_key(serialized_entity), serialized_entity)
+            self.__expunge_old_historical_positions()
 
     def retrieve_historic_positions(self):
-        key = self.__build_historic_positions_key()
-        raw_entities = self.cache.fetch(key, as_type=list)
+        raw_entities = self.cache.values_fetch(self.store_history_key())
         return list([deserialize(raw) for raw in raw_entities])
+
+    def __expunge_old_historical_positions(self):
+        historical_positions = self.cache.values_fetch(self.store_history_key())
+        limit = int(self.options[POSITION_HISTORY_LIMIT])
+        if len(historical_positions) > limit:
+            historical_positions.sort(reverse=True, key=self.historic_value_key)
+            history_positions_to_delete = historical_positions[limit:]
+            for hp in history_positions_to_delete:
+                self.cache.values_delete_value(self.store_history_key(), self.historic_value_key(hp))

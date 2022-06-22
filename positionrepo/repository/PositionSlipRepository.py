@@ -1,3 +1,5 @@
+import logging
+
 from cache.holder.RedisCacheHolder import RedisCacheHolder
 from core.options.exception.MissingOptionError import MissingOptionError
 from core.position.PositionSlip import PositionSlip
@@ -11,6 +13,7 @@ POSITION_SLIP_KEY = 'POSITION_SLIP_KEY'
 class PositionSlipRepository:
 
     def __init__(self, options):
+        self.log = logging.getLogger('PositionSlipRepository')
         self.options = options
         self.__check_options()
         self.cache = RedisCacheHolder()
@@ -21,13 +24,15 @@ class PositionSlipRepository:
         if POSITION_SLIP_KEY not in self.options:
             raise MissingOptionError(f'missing option please provide option {POSITION_SLIP_KEY}')
 
+    def store_key(self):
+        return self.options[POSITION_SLIP_KEY]
+
     def store(self, position_slip: PositionSlip):
-        position_slip_key = self.options[POSITION_SLIP_KEY]
         slip_serialized = serialize(position_slip)
-        self.cache.store(position_slip_key, slip_serialized)
+        self.log.debug(f'storing position slip:{slip_serialized}')
+        self.cache.store(self.store_key(), slip_serialized)
 
     def retrieve(self) -> PositionSlip:
-        position_slip_key = self.options[POSITION_SLIP_KEY]
-        raw_slip = self.cache.fetch(position_slip_key, as_type=dict)
-        return deserialize(raw_slip)
-
+        serialized_slip = self.cache.fetch(self.store_key(), as_type=dict)
+        self.log.debug(f'retrieving position slip:{serialized_slip}')
+        return deserialize(serialized_slip)
